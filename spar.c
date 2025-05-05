@@ -37,7 +37,7 @@ static sp_arena_block* sp_arena_create_block(sp_arena *arena, size_t min_size) {
     /* If requested size is larger than the default block_size, 
        allocate a block big enough to fit it */
     if (min_size > block_size) {
-        // Align to page size 
+        // Align to multiples of page size 
         block_size = align_forward(block_size, 4096);
     }
 
@@ -49,7 +49,7 @@ static sp_arena_block* sp_arena_create_block(sp_arena *arena, size_t min_size) {
 
     sp_arena_block *block = arena->config.allocator(sizeof(*block));
     if (!block) {
-        arena->config.deallocator(block);
+        arena->config.deallocator(memory);
         arena->last_err = SP_ARENA_ERR_OUT_OF_MEMORY;
         return NULL;
     }
@@ -362,7 +362,7 @@ void sp_arena_clear(sp_arena *arena) {
 
     sp_arena_block *block = arena->first;
     while (block) {
-        block->size = 0;
+        block->used = 0;
         block = block->next;
     }
 
@@ -397,6 +397,8 @@ void sp_arena_destroy(sp_arena *arena) {
     pthread_mutex_unlock(&arena->mutex);
     pthread_mutex_destroy(&arena->mutex);
 #endif
+
+    free(arena);
 }
 
 sp_arena_err_t sp_arena_get_last_error(const sp_arena *arena) {

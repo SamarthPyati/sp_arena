@@ -72,7 +72,7 @@ typedef struct sp_arena_block       sp_arena_block;
 typedef struct sp_arena_config      sp_arena_config;
 typedef struct sp_arena_temp        sp_arena_temp;
 
-/* Arena block */
+/* Arena block struct */
 struct sp_arena_block {
     void *memory;                   /* Pointer to block's memory region */
     size_t size;                    /* Size of block */
@@ -260,5 +260,14 @@ float sp_arena_utilization(const sp_arena *arena);
  */
 #define sp_arena_alloc_array(arena, type, count) ((type*) sp_arena_alloc(arena, sizeof(type) * (count)))
 
+/** 
+ * Helper macro for creating a temporary scope of arena with auto cleanup.
+ * Usage:
+ *       sp_arena_temp_scope(arena) {
+ *           // Allocations here will be automatically freed when the scope ends
+ *       }
+ */
+#define sp_arena_temp_scope(arena) \
+    for (sp_arena_temp __temp = sp_arena_temp_begin(arena); __temp.block != NULL; (sp_arena_temp_end(__temp), __temp.block = NULL))
 
 #endif  // SP_ARENA_H_ 
