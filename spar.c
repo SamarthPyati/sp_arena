@@ -230,18 +230,76 @@ void *sp_arena_alloc_aligned(sp_arena *arena, size_t size, size_t alignment) {
 /* Allocate zero-initialized memory from an arena */
 void *sp_arena_calloc(sp_arena *arena, size_t size) {
     void *result = sp_arena_alloc(arena, size);
-    if (result) memset(arena, 0, sizeof(*arena));
+    if (result) memset(result, 0, size);
     return result;
 }
 
 // TODO;
-void *sp_arena_resize(sp_arena *arena, void *old_ptr, size_t old_size, size_t new_size); 
+void *sp_arena_resize(sp_arena *arena, void *old_ptr, size_t old_size, size_t new_size) {
+    if (!arena || !old_ptr || old_size == 0 || new_size == 0) {
+        if (arena) arena->last_err = SP_ARENA_ERR_INVALID_SIZE;
+        return NULL;
+    }
+    
+#if SP_ARENA_THREAD_SAFE
+    pthread_mutex_lock(&arena->mutex);
+#endif
+
+    sp_arena_block *block = arena->current;
+    if (!block) {
+        arena->last_err = SP_ARENA_ERR_INVALID_ARENA;
+#if SP_ARENA_THREAD_SAFE
+        pthread_mutex_unlock(&arena->mutex);
+#endif
+        return NULL;
+    }
+
+    // Check if we have enough space to grow
+    if (new_size > old_size) {
+        size_t additional = new_size - old_size;
+        if (block->used + additional > block->size) {
+            // Not enough space, allocate new block if allowed
+            if (arena->config.fixed_size) {
+                arena->last_err = SP_ARENA_ERR_OUT_OF_MEMORY;
+#if SP_ARENA_THREAD_SAFE
+                pthread_mutex_unlock(&arena->mutex);
+#endif
+                return NULL;
+            }
+            
+            // Allocate new memory and copy old data
+            void *new_ptr = sp_arena_alloc(arena, new_size);
+            if (new_ptr) {
+                // Adjust the old block's used size basically undoing last operation
+                block->used -= old_size;
+                arena->total_used -= old_size;
+                
+                // Copy old data to new location
+                memcpy(new_ptr, old_ptr, old_size);
+            }
+            
+#if SP_ARENA_THREAD_SAFE
+            pthread_mutex_unlock(&arena->mutex);
+#endif
+            return new_ptr;
+        }
+    }
+    
+    // We can resize in place
+    block->used = block->used - old_size + new_size;
+    arena->total_used = arena->total_used - old_size + new_size;
+    
+#if SP_ARENA_THREAD_SAFE
+    pthread_mutex_unlock(&arena->mutex);
+#endif
+    return old_ptr;
+}
 
 /* Allocate and copy a string into an arena */
 char *sp_arena_strdup(sp_arena *arena, const char *str) {
     if (!str) return NULL;
 
-    size_t len = strlen(str + 1);
+    size_t len = strlen(str) + 1;
     char *dup = sp_arena_alloc(arena, len);
     if (dup) memcpy(dup, str, len);
     return dup;
