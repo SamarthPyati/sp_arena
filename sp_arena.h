@@ -1,5 +1,5 @@
 /*
- * @brief: spar.h - A robust dynamic arena allocator
+ * @brief: sp_arena.h - A robust dynamic arena allocator
  * 
  * @ref:  implementation is based on principles from below article:
  *        "Untangling Lifetimes: The Arena Allocator"
@@ -26,10 +26,10 @@
 #include <stdbool.h>
 
 /* Data sizes */
-#define KB(n) (1024 *   ((uint32_t)(n)))
-#define MB(n) (1024 * KB((uint32_t)(n)))
-#define GB(n) (1024 * MB((uint32_t)(n)))
-#define TB(n) (1024 * GB((uint32_t)(n)))
+#define KB(n) (1024UL *   ((uint64_t)(n)))
+#define MB(n) (1024UL * KB((uint64_t)(n)))
+#define GB(n) (1024UL * MB((uint64_t)(n)))
+#define TB(n) (1024UL * GB((uint64_t)(n)))
 
 
 /* Configurations */
@@ -53,7 +53,6 @@
 /* Common useful macros */
 #define Stmt(s) do { s } while (0);
 #define ArrayLen(a) (sizeof((a)) / sizeof(*(a)))
-
 #define Unused(x) (void)(x);
 
 /* Error Handling */
