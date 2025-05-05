@@ -1,28 +1,23 @@
 CC=cc
 CFLAGS=-Wall -Wextra -std=c17 -g -Wno-unused-function
 
-# Target names
 TARGET=spar
 EXAMPLE=example/example
+BIN_DIR=bin
 
-# Default target builds everything
 all: build example
 
-# Build the arena allocator library
 build: $(TARGET).c $(TARGET).h
-	mkdir -p build
-	$(CC) $(CFLAGS) -c -o build/$(TARGET).o $<
+	mkdir -p $(BIN_DIR)
+	$(CC) $(CFLAGS) -c -o $(BIN_DIR)/$(TARGET).o $<
 
-# Build the executable
-$(TARGET): build $(TARGET).c build/$(TARGET).o
+$(TARGET): build $(TARGET).c $(BIN_DIR)/$(TARGET).o
 	$(CC) $(CFLAGS) -o $(TARGET) $(TARGET).c
 
-# Build and run tests
-example: build example/example.c
-	$(CC) $(CFLAGS) -o $(EXAMPLE) example/example.c build/$(TARGET).o
+example: build $(EXAMPLE).c
+	$(CC) $(CFLAGS) -o $(EXAMPLE) $(EXAMPLE).c $(BIN_DIR)/$(TARGET).o
 	./$(EXAMPLE)
 
-# Clean up build artifacts
 clean:
 	rm -f build/$(TARGET).o $(TARGET) $(TEST)
 
