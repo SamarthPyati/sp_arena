@@ -2,7 +2,7 @@ CC=cc
 CFLAGS=-Wall -Wextra -std=c17 -g -Wno-unused-function
 
 TARGET=sp_arena
-EXAMPLES=example/example
+EXAMPLE=example/example
 BIN_DIR=bin
 
 all: build example
