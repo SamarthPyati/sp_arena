@@ -34,8 +34,8 @@ static inline void *align_forward_ptr(void *ptr, size_t align) {
 static sp_arena_block* sp_arena_create_block(sp_arena *arena, size_t min_size) {
     size_t block_size = arena->config.block_size;
 
-    /* If requested size is larger than the default block_size, 
-       allocate a block big enough to fit it */
+    // If requested size is larger than the default block_size, 
+    // allocate a block big enough to fit it 
     if (min_size > block_size) {
         // Align to multiples of page size 
         block_size = align_forward(block_size, 4096);
@@ -74,7 +74,7 @@ sp_arena* sp_arena_create_with_config(sp_arena_config config) {
     sp_arena* arena = (sp_arena *)malloc(sizeof(*arena));
     if (!arena) return NULL;
 
-    /* Validating config */
+    // Validating config 
     if (config.alignment == 0 || !is_power_of_two(config.alignment)) {
         return NULL;
     }
@@ -83,13 +83,13 @@ sp_arena* sp_arena_create_with_config(sp_arena_config config) {
         return NULL;
     }
 
-    /* Custom allocator must come with custom deallocator and vice versa */
+    // Custom allocator must come with custom deallocator and vice versa 
     if ((config.allocator != NULL && config.deallocator == NULL) ||
         (config.allocator == NULL && config.deallocator != NULL)) {
         return NULL;
     }
 
-    /* Use default allocator/deallocator if none provided */
+    // Use default allocator/deallocator if none provided 
     if (config.allocator == NULL) {
         config.allocator = malloc;
         config.deallocator = free;
@@ -104,7 +104,7 @@ sp_arena* sp_arena_create_with_config(sp_arena_config config) {
     }
 #endif
 
-    /* Create first block */
+    // Create first block 
     sp_arena_block *block = sp_arena_create_block(arena, 0);
     if (!block) {
         arena->last_err = SP_ARENA_ERR_OUT_OF_MEMORY;
@@ -305,7 +305,7 @@ char *sp_arena_strdup(sp_arena *arena, const char *str) {
     return dup;
 }
 
-// Create a temporary checkpoint for the arena 
+/* Create a temporary checkpoint for the arena */ 
 sp_arena_temp sp_arena_temp_begin(sp_arena *arena) {
     sp_arena_temp temp;
     temp.arena = arena;
@@ -353,7 +353,7 @@ void sp_arena_temp_end(sp_arena_temp temp) {
 #endif
 }
 
-// Clear arena, keeping its memory for reuse
+/* Clear arena, keeping its memory for reuse */ 
 void sp_arena_clear(sp_arena *arena) {
     if (!arena) return;
 #if SP_ARENA_THREAD_SAFE
@@ -430,7 +430,7 @@ const char *sp_arena_error_string(sp_arena_err_t error) {
     }
 }
 
-// Get the total amount of memory allocated to the arena 
+/* Get the total amount of memory allocated to the arena */
 size_t sp_arena_total_allocated(const sp_arena *arena) {
     if (!arena) {
         return 0;
@@ -438,7 +438,7 @@ size_t sp_arena_total_allocated(const sp_arena *arena) {
     return arena->total_allocated;
 }
 
-// Get the total amount of memory used in the arena 
+/* Get the total amount of memory used in the arena */
 size_t sp_arena_total_used(const sp_arena *arena) {
     if (!arena) {
         return 0;
@@ -446,7 +446,7 @@ size_t sp_arena_total_used(const sp_arena *arena) {
     return arena->total_used;
 }
 
-// Get the utilization ratio of the arena (used/allocated)
+/* Get the utilization ratio of the arena (used/allocated)*/
 float sp_arena_utilization(const sp_arena *arena) {
     if (!arena || arena->total_allocated == 0) {
         return 0.0f;
