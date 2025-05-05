@@ -1,5 +1,5 @@
-/*
- * example.c - Example usage of the arena allocator
+/**
+ * @file example.c - Example usage of the arena allocator
  */
 
 #include "../spar.h"
@@ -18,26 +18,21 @@ typedef struct {
 void basic_usage_example() {
     printf("\n=== Basic Usage Example ===\n");
     
-    sp_arena arena;
-    
-    if (!sp_arena_init(&arena)) {
-        printf("Failed to initialize arena\n");
-        return;
-    }
+    sp_arena *arena = sp_arena_create();
     
     /* Simple allocations */
-    int* int_array = sp_arena_alloc_array(&arena, int, 10);
+    int* int_array = sp_arena_alloc_array(arena, int, 10);
     for (int i = 0; i < 10; i++) {
         int_array[i] = i * 10;
     }
     
-    TestItem* item = sp_arena_alloc_type(&arena, TestItem);
+    TestItem* item = sp_arena_alloc_type(arena, TestItem);
     item->id = 42;
     strcpy(item->name, "Test Item");
     item->value = 3.14f;
     
     /* String duplication */
-    char* message = sp_arena_strdup(&arena, "Hello from arena allocator!");
+    char* message = sp_arena_strdup(arena, "Hello from arena allocator!");
     
     /* Print values to show they're valid */
     printf("int_array[5] = %d\n", int_array[5]);
@@ -45,7 +40,7 @@ void basic_usage_example() {
     printf("message: %s\n", message);
     
     /* Array of structs */
-    TestItem* items = sp_arena_alloc_array(&arena, TestItem, 5);
+    TestItem* items = sp_arena_alloc_array(arena, TestItem, 5);
     for (int i = 0; i < 5; i++) {
         items[i].id = i;
         snprintf(items[i].name, sizeof(items[i].name), "Item %d", i);
@@ -56,23 +51,22 @@ void basic_usage_example() {
     }
     
     /* Show memory usage */
-    printf("Total allocated: %zu bytes\n", sp_arena_total_allocated(&arena));
-    printf("Total used: %zu bytes\n", sp_arena_total_used(&arena));
-    printf("Utilization: %.2f%%\n", sp_arena_utilization(&arena) * 100.0f);
+    printf("Total allocated: %zu bytes\n", sp_arena_total_allocated(arena));
+    printf("Total used: %zu bytes\n", sp_arena_total_used(arena));
+    printf("Utilization: %.2f%%\n", sp_arena_utilization(arena) * 100.0f);
     
     /* Cleanup */
-    sp_arena_destroy(&arena);
+    sp_arena_destroy(arena);
 }
 
 /* Function to demonstrate temporary arenas */
 void temp_arena_example() {
     printf("\n=== Temporary Arena Example ===\n");
     
-    sp_arena arena;
-    sp_arena_init(&arena);
+    sp_arena *arena = sp_arena_create();
     
     /* Allocate some initial data */
-    int* permanent_data = sp_arena_alloc_array(&arena, int, 5);
+    int* permanent_data = sp_arena_alloc_array(arena, int, 5);
     for (int i = 0; i < 5; i++) {
         permanent_data[i] = i;
     }
@@ -84,10 +78,10 @@ void temp_arena_example() {
     printf("\n");
     
     /* Begin a temporary scope */
-    sp_arena_temp temp = sp_arena_temp_begin(&arena);
+    sp_arena_temp temp = sp_arena_temp_begin(arena);
     
     /* Allocate temporary data */
-    int* temp_data = sp_arena_alloc_array(&arena, int, 10);
+    int* temp_data = sp_arena_alloc_array(arena, int, 10);
     for (int i = 0; i < 10; i++) {
         temp_data[i] = 100 + i;
     }
@@ -115,7 +109,7 @@ void temp_arena_example() {
     /* temp_data is no longer valid (would cause undefined behavior if accessed) */
     
     /* Allocate more data after rewinding */
-    int* more_data = sp_arena_alloc_array(&arena, int, 3);
+    int* more_data = sp_arena_alloc_array(arena, int, 3);
     for (int i = 0; i < 3; i++) {
         more_data[i] = 200 + i;
     }
@@ -126,10 +120,11 @@ void temp_arena_example() {
     }
     printf("\n");
     
-    sp_arena_destroy(&arena);
+    sp_arena_destroy(arena);
 }
 
 int main(void) {
     basic_usage_example();
+    temp_arena_example();
     return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * @brief spar.h - A robust dynamic arena allocator
+ * @brief: spar.h - A robust dynamic arena allocator
  * 
  * @ref:  implementation is based on principles from below article:
  *        "Untangling Lifetimes: The Arena Allocator"
@@ -11,7 +11,6 @@
  * - Arena reuse through clearing
  * - Thread safety options
  * - Clear API for arena creation, allocation, and destruction
- * 
  * 
  * @author: Samarth Pyati
  * @date: 4-05-2025
@@ -27,10 +26,10 @@
 #include <stdbool.h>
 
 /* Data sizes */
-#define KB(n) (1024 *   ((uint32_t)n))
-#define MB(n) (1024 * KB((uint32_t)n))
-#define GB(n) (1024 * MB((uint32_t)n))
-#define TB(n) (1024 * GB((uint32_t)n))
+#define KB(n) (1024 *   ((uint32_t)(n)))
+#define MB(n) (1024 * KB((uint32_t)(n)))
+#define GB(n) (1024 * MB((uint32_t)(n)))
+#define TB(n) (1024 * GB((uint32_t)(n)))
 
 
 /* Configurations */
@@ -64,6 +63,7 @@ typedef enum {
     SP_ARENA_ERR_INVALID_ALIGNMENT, 
     SP_ARENA_ERR_INVALID_SIZE, 
     SP_ARENA_ERR_INVALID_ARENA, 
+    SP_ARENA_ERR_ARENA_NOT_ALLOCATED, 
     SP_ARENA_ERR_ALLOCATION_TOO_LARGE
 } sp_arena_err_t;
 
@@ -121,7 +121,7 @@ extern const sp_arena_config SP_ARENA_DEFAULT_CONFIG;
  * @param arena Pointer to an arena structure to initialize
  * @return true on success, false on failure
  */
-bool sp_arena_init(sp_arena *arena);
+sp_arena* sp_arena_create(void);
 
 /**
  * Initialize an arena with the custom configuration.
@@ -130,7 +130,7 @@ bool sp_arena_init(sp_arena *arena);
  * @param config Custom configuration struct 
  * @return true on success, false on failure
  */
-bool sp_arena_init_with_config(sp_arena *arena, sp_arena_config config);
+sp_arena* sp_arena_create_with_config(sp_arena_config config);
 
 /**
  * Allocate memory from an arena.

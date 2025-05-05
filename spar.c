@@ -65,27 +65,28 @@ static sp_arena_block* sp_arena_create_block(sp_arena *arena, size_t min_size) {
 }
 
 /* Initialize an arena with the default configuration */
-bool sp_arena_init(sp_arena *arena) {
-    return sp_arena_init_with_config(arena, SP_ARENA_DEFAULT_CONFIG);
+sp_arena* sp_arena_create(void) {
+    return sp_arena_create_with_config(SP_ARENA_DEFAULT_CONFIG);
 }
 
 /* Initialize an arena with a custom configuration */
-bool sp_arena_init_with_config(sp_arena *arena, sp_arena_config config) {
-    if (!arena) return false;
+sp_arena* sp_arena_create_with_config(sp_arena_config config) {
+    sp_arena* arena = (sp_arena *)malloc(sizeof(*arena));
+    if (!arena) return NULL;
 
     /* Validating config */
     if (config.alignment == 0 || !is_power_of_two(config.alignment)) {
-        return false;
+        return NULL;
     }
 
     if (config.block_size == 0) {
-        return false;
+        return NULL;
     }
 
     /* Custom allocator must come with custom deallocator and vice versa */
     if ((config.allocator != NULL && config.deallocator == NULL) ||
         (config.allocator == NULL && config.deallocator != NULL)) {
-        return false;
+        return NULL;
     }
 
     /* Use default allocator/deallocator if none provided */
@@ -99,7 +100,7 @@ bool sp_arena_init_with_config(sp_arena *arena, sp_arena_config config) {
 
 #if SP_ARENA_THREAD_SAFE 
     if (pthread_mutex_init(&arena->mutex, NULL) != 0) {
-        return false;
+        return NULL;
     }
 #endif
 
@@ -107,12 +108,12 @@ bool sp_arena_init_with_config(sp_arena *arena, sp_arena_config config) {
     sp_arena_block *block = sp_arena_create_block(arena, 0);
     if (!block) {
         arena->last_err = SP_ARENA_ERR_OUT_OF_MEMORY;
-        return false;
+        return NULL;
     }
 
     arena->first = block;
     arena->current = block;
-    return true;
+    return arena;
 }
 
 static void* sp_arena_alloc_internal(sp_arena* arena, size_t size, size_t alignment) {
@@ -352,6 +353,8 @@ const char *sp_arena_error_string(sp_arena_err_t error) {
     {
     case SP_ARENA_ERR_NONE:
         return "No error";
+    case SP_ARENA_ERR_ARENA_NOT_ALLOCATED:
+        return "Failed to allocate arena";
     case SP_ARENA_ERR_OUT_OF_MEMORY: 
         return "Out of Memory";
     case SP_ARENA_ERR_INVALID_ALIGNMENT: 
