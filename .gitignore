@@ -1,4 +1,5 @@
 *.[dD]SYM
+.DS_Store
 spar
 test
 example/example
