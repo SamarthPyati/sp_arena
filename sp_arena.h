@@ -23,6 +23,7 @@
 #define SP_ARENA_H_ 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 /* Data sizes */
@@ -41,10 +42,17 @@
 #define SP_ARENA_DEFAULT_ALIGNMENT (sizeof(void*))
 #endif
 
+#ifndef SP_ARENA_DEFAULT_ALLOCATOR 
+#define SP_ARENA_DEFAULT_ALLOCATOR malloc
+#endif
+
+#ifndef SP_ARENA_DEFAULT_DEALLOCATOR 
+#define SP_ARENA_DEFAULT_DEALLOCATOR free
+#endif
+
 #ifndef SP_ARENA_THREAD_SAFE 
 #define SP_ARENA_THREAD_SAFE 1
 #endif
-
 
 #ifdef SP_ARENA_THREAD_SAFE
 #include <pthread.h>

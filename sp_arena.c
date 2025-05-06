@@ -2,7 +2,6 @@
 
 #include "sp_arena.h"
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -10,8 +9,8 @@ const sp_arena_config SP_ARENA_DEFAULT_CONFIG = {
     .block_size = SP_ARENA_DEFAULT_BLOCK_SIZE, 
     .alignment = SP_ARENA_DEFAULT_ALIGNMENT, 
     .fixed_size = false, 
-    .allocator = malloc, 
-    .deallocator = free
+    .allocator = SP_ARENA_DEFAULT_ALLOCATOR, 
+    .deallocator = SP_ARENA_DEFAULT_DEALLOCATOR
 };
 
 /* Helper functions for alignment */

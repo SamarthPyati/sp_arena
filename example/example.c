@@ -56,7 +56,15 @@ void basic_usage_example() {
 void temp_arena_example() {
     printf("\n=== Temporary Arena Example ===\n");
     
-    sp_arena *arena = sp_arena_create();
+    sp_arena_config config = {
+        .alignment = SP_ARENA_DEFAULT_ALIGNMENT, 
+        .allocator = SP_ARENA_DEFAULT_ALLOCATOR, 
+        .block_size = KB(1), 
+        .deallocator = SP_ARENA_DEFAULT_DEALLOCATOR, 
+        .fixed_size = false
+    };
+
+    sp_arena *arena = sp_arena_create_with_config(config);
     
     // Allocate some initial data 
     int* permanent_data = sp_arena_alloc_array(arena, int, 5);
