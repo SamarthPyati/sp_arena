@@ -19,8 +19,8 @@ void basic_usage_example() {
     sp_arena *arena = sp_arena_create();
     
     // Basic allocations 
-    int* int_array = sp_arena_alloc_array(arena, int, 10);
-    for (int i = 0; i < 10; i++) {
+    int* int_array = sp_arena_alloc_array(arena, int, 100);
+    for (int i = 0; i < 100; i++) {
         int_array[i] = i * 10;
     }
     
@@ -47,12 +47,8 @@ void basic_usage_example() {
         printf("items[%d]: id=%d, name=%s, value=%f\n", 
                i, items[i].id, items[i].name, items[i].value);
     }
-    
-    // Show memory usage 
-    printf("Total allocated: %zu bytes\n", sp_arena_total_allocated(arena));
-    printf("Total used: %zu bytes\n", sp_arena_total_used(arena));
-    printf("Utilization: %.2f%%\n", sp_arena_utilization(arena) * 100.0f);
-    
+
+    sp_arena_usage_report(arena);
     // Cleanup 
     sp_arena_destroy(arena);
 }
@@ -114,9 +110,7 @@ void temp_arena_example() {
     printf("\n");
     
     // Show memory usage 
-    printf("Total allocated: %zu bytes\n", sp_arena_total_allocated(arena));
-    printf("Total used: %zu bytes\n", sp_arena_total_used(arena));
-    printf("Utilization: %.2f%%\n", sp_arena_utilization(arena) * 100.0f);
+    sp_arena_usage_report(arena);
     sp_arena_destroy(arena);
 }
 

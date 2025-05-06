@@ -250,6 +250,13 @@ size_t sp_arena_total_used(const sp_arena *arena);
 float sp_arena_utilization(const sp_arena *arena);
 
 /**
+ * Get the report of memory utilisation by arena. 
+ * 
+ * @param arena Pointer to the arena 
+ */
+void sp_arena_usage_report(const sp_arena *arena);
+
+/**
  * Helper macro to allocate an object of a specific type.
  */
 #define sp_arena_alloc_type(arena, type) ((type*) sp_arena_alloc(arena, sizeof(type)))

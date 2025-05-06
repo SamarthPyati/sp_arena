@@ -1,3 +1,5 @@
+/* This is a fixed version of sp_arena.c with corrected allocation logic */
+
 #include "sp_arena.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -37,6 +39,7 @@ static sp_arena_block* sp_arena_create_block(sp_arena *arena, size_t min_size) {
     // If requested size is larger than the default block_size, 
     // allocate a block big enough to fit it 
     if (min_size > block_size) {
+        block_size = min_size;
         // Align to multiples of page size 
         block_size = align_forward(block_size, 4096);
     }
@@ -76,16 +79,19 @@ sp_arena* sp_arena_create_with_config(sp_arena_config config) {
 
     // Validating config 
     if (config.alignment == 0 || !is_power_of_two(config.alignment)) {
+        free(arena);
         return NULL;
     }
 
     if (config.block_size == 0) {
+        free(arena);
         return NULL;
     }
 
     // Custom allocator must come with custom deallocator and vice versa 
     if ((config.allocator != NULL && config.deallocator == NULL) ||
         (config.allocator == NULL && config.deallocator != NULL)) {
+        free(arena);
         return NULL;
     }
 
@@ -100,6 +106,7 @@ sp_arena* sp_arena_create_with_config(sp_arena_config config) {
 
 #if SP_ARENA_THREAD_SAFE 
     if (pthread_mutex_init(&arena->mutex, NULL) != 0) {
+        free(arena);
         return NULL;
     }
 #endif
@@ -107,6 +114,7 @@ sp_arena* sp_arena_create_with_config(sp_arena_config config) {
     // Create first block 
     sp_arena_block *block = sp_arena_create_block(arena, 0);
     if (!block) {
+        free(arena);
         arena->last_err = SP_ARENA_ERR_OUT_OF_MEMORY;
         return NULL;
     }
@@ -118,7 +126,7 @@ sp_arena* sp_arena_create_with_config(sp_arena_config config) {
 
 static void* sp_arena_alloc_internal(sp_arena* arena, size_t size, size_t alignment) {
     if (!arena || !arena->current || size == 0) {
-        if (!arena) {
+        if (arena) {
             arena->last_err = size == 0 ? SP_ARENA_ERR_INVALID_SIZE : SP_ARENA_ERR_INVALID_ARENA;
         }
         return NULL;
@@ -136,79 +144,76 @@ static void* sp_arena_alloc_internal(sp_arena* arena, size_t size, size_t alignm
     sp_arena_block *block = arena->current;
 
     // Align current used position 
-    size_t aligned_used = align_forward(block->used, alignment);
-    size_t padding = aligned_used - block->used;
-    size_t req_size = size + padding;
-
-    // If not enough space in current block create more blocks
-    if (aligned_used + size > block->size) {
-        if (arena->config.fixed_size) {
-            // Fixed sized arena cannot create more blocks
-            arena->last_err = SP_ARENA_ERR_OUT_OF_MEMORY;
-#if SP_ARENA_THREAD_SAFE 
+    size_t aligned_used = align_forward(block->used, alignment);  // 3, 8 -> 8  
+    size_t padding = aligned_used - block->used;                  // p -> 8 - 3 = 5
+    size_t req_size = size + padding;                             // 2 + 5 = 7 
+                                                                  // 8 + 2 = 10 < 64 
+    // Check if there's enough space in current block
+    if (aligned_used + size <= block->size) {
+        // Have space in current block
+        void* result = (char*)block->memory + aligned_used;
+        block->used = aligned_used + size;
+        arena->total_used += req_size;
+        
+    #if SP_ARENA_THREAD_SAFE
+        pthread_mutex_unlock(&arena->mutex);
+    #endif
+        return result;
+    }
+    
+    // Not enough space in current block
+    if (arena->config.fixed_size) {
+        // Fixed sized arena cannot create more blocks
+        arena->last_err = SP_ARENA_ERR_OUT_OF_MEMORY;
+    #if SP_ARENA_THREAD_SAFE 
+        pthread_mutex_unlock(&arena->mutex);
+    #endif 
+        return NULL;
+    }
+    
+    // Look for an existing next block with enough space if not fixed arena 
+    sp_arena_block* next_block = block->next;
+    while (next_block != NULL) {
+        aligned_used = align_forward(next_block->used, alignment);
+        padding = aligned_used - next_block->used;
+        
+        if (aligned_used + size <= next_block->size) {
+            // Found a suitable existing block
+            arena->current = next_block;
+            void* result = (char*)next_block->memory + aligned_used;
+            next_block->used = aligned_used + size;
+            arena->total_used += size + padding;
+            
+        #if SP_ARENA_THREAD_SAFE
             pthread_mutex_unlock(&arena->mutex);
-#endif 
-            return NULL;
+        #endif
+            return result;
         }
+        
+        // Reset this block since we're skipping past it
+        next_block->used = 0;
+        next_block = next_block->next;
     }
-
-    // Check if there's already a suitable next block 
-    if (block->next) {
-        block = block->next;    // Move to next block
-        block->used = 0;        // Reset next block 
-        arena->current = block;
-
-        // Recalculate alignment for the new block 
-        aligned_used = align_forward(block->used, alignment);
-        padding = aligned_used - block->used;
-        req_size = size + padding;
-
-        // If this block is also small, we need a larger one 
-        if (aligned_used + size > block->size) {
-            sp_arena_block* new_block = sp_arena_create_block(arena, size);
-            if (!new_block) {
-                arena->last_err = SP_ARENA_ERR_OUT_OF_MEMORY;
-#if SP_ARENA_THREAD_SAFE
-                pthread_mutex_unlock(&arena->mutex);
-#endif
-                return NULL;
-            }
-
-            // Insert after current block 
-            new_block->next = block->next;
-            block->next = new_block;
-            arena->current = new_block;
-            
-            block = new_block;
-            aligned_used = 0;  // New block is fresh, no alignment needed 
-            padding = 0;
-            req_size = size;
-        }
-    } else {
-
-        // Need to create a new block 
-        sp_arena_block* new_block = sp_arena_create_block(arena, size);
-            if (!new_block) {
-                arena->last_err = SP_ARENA_ERR_OUT_OF_MEMORY;
-#if SP_ARENA_THREAD_SAFE
-                pthread_mutex_unlock(&arena->mutex);
-#endif
-                return NULL;
-            }
-            
-            block->next = new_block;
-            arena->current = new_block;
-            
-            block = new_block;
-            aligned_used = 0; 
-            padding = 0;
-            req_size = size;
+    
+    // If not existing block found then need to create a new block
+    sp_arena_block* new_block = sp_arena_create_block(arena, size);
+    if (!new_block) {
+        arena->last_err = SP_ARENA_ERR_OUT_OF_MEMORY;
+    #if SP_ARENA_THREAD_SAFE
+        pthread_mutex_unlock(&arena->mutex);
+    #endif
+        return NULL;
     }
-
-    // Have block with enough space
-    void* result = (char*)block->memory + aligned_used;
-    block->used = aligned_used + size;
-    arena->total_used += req_size;
+    
+    // Link the new block
+    new_block->next = block->next;
+    block->next = new_block;
+    arena->current = new_block;
+    
+    // Allocate from the new block
+    void* result = new_block->memory; // No alignment needed for fresh block
+    new_block->used = size;
+    arena->total_used += size;
     
 #if SP_ARENA_THREAD_SAFE
     pthread_mutex_unlock(&arena->mutex);
@@ -234,7 +239,7 @@ void *sp_arena_calloc(sp_arena *arena, size_t size) {
     return result;
 }
 
-// TODO;
+/* Resize an allocation from an arena */
 void *sp_arena_resize(sp_arena *arena, void *old_ptr, size_t old_size, size_t new_size) {
     if (!arena || !old_ptr || old_size == 0 || new_size == 0) {
         if (arena) arena->last_err = SP_ARENA_ERR_INVALID_SIZE;
@@ -254,11 +259,28 @@ void *sp_arena_resize(sp_arena *arena, void *old_ptr, size_t old_size, size_t ne
         return NULL;
     }
 
-    // Check if we have enough space to grow
+    // Check if old_ptr is at the end of the current block
+    char *block_end = (char*)block->memory + block->used - old_size;
+    if ((char*)old_ptr != block_end) {
+        // Not the last allocation, need to allocate new memory
+        void *new_ptr = sp_arena_alloc(arena, new_size);
+        if (new_ptr) {
+            // Copy old data to new location
+            size_t copy_size = old_size < new_size ? old_size : new_size;
+            memcpy(new_ptr, old_ptr, copy_size);
+        }
+        
+#if SP_ARENA_THREAD_SAFE
+        pthread_mutex_unlock(&arena->mutex);
+#endif
+        return new_ptr;
+    }
+    
+    // We can resize in place
     if (new_size > old_size) {
         size_t additional = new_size - old_size;
         if (block->used + additional > block->size) {
-            // Not enough space, allocate new block if allowed
+            // Not enough space, allocate new memory
             if (arena->config.fixed_size) {
                 arena->last_err = SP_ARENA_ERR_OUT_OF_MEMORY;
 #if SP_ARENA_THREAD_SAFE
@@ -267,15 +289,13 @@ void *sp_arena_resize(sp_arena *arena, void *old_ptr, size_t old_size, size_t ne
                 return NULL;
             }
             
-            // Allocate new memory and copy old data
             void *new_ptr = sp_arena_alloc(arena, new_size);
             if (new_ptr) {
-                // Adjust the old block's used size basically undoing last operation
+                // Copy old data
+                memcpy(new_ptr, old_ptr, old_size);
+                // Adjust the old block's used size
                 block->used -= old_size;
                 arena->total_used -= old_size;
-                
-                // Copy old data to new location
-                memcpy(new_ptr, old_ptr, old_size);
             }
             
 #if SP_ARENA_THREAD_SAFE
@@ -285,7 +305,7 @@ void *sp_arena_resize(sp_arena *arena, void *old_ptr, size_t old_size, size_t ne
         }
     }
     
-    // We can resize in place
+    // Adjust block size
     block->used = block->used - old_size + new_size;
     arena->total_used = arena->total_used - old_size + new_size;
     
@@ -452,4 +472,11 @@ float sp_arena_utilization(const sp_arena *arena) {
         return 0.0f;
     }
     return (float)arena->total_used / (float)arena->total_allocated;
+}
+
+/* Get the report of memory utilisation by arena. */ 
+void sp_arena_usage_report(const sp_arena *arena) {
+    printf("Total allocated: %zu bytes\n", sp_arena_total_allocated(arena));
+    printf("Total used: %zu bytes\n", sp_arena_total_used(arena));
+    printf("Utilization: %.2f%%\n", sp_arena_utilization(arena) * 100.0f);
 }
