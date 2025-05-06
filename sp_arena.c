@@ -1,5 +1,3 @@
-/* This is a fixed version of sp_arena.c with corrected allocation logic */
-
 #include "sp_arena.h"
 #include <assert.h>
 #include <string.h>
@@ -471,7 +469,7 @@ float sp_arena_utilization(const sp_arena *arena) {
         return 0.0f;
     }
     return (float)arena->total_used / (float)arena->total_allocated;
-}
+    }
 
 /* Get the report of memory utilisation by arena. */ 
 void sp_arena_usage_report(const sp_arena *arena) {
