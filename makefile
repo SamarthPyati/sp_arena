@@ -1,24 +1,37 @@
 CC=cc
-CFLAGS=-Wall -Wextra -std=c17 -g -Wno-unused-function
+INCLUDES=-I.
+OPT=-O3
+CFLAGS=-Wall -Wextra -std=c17 -g -Wno-unused-function $(INCLUDES) $(OPT)
 
-TARGET=sp_arena
-EXAMPLE=example/example
+SRC=sp_arena
 BIN_DIR=bin
 
-all: build example
+# EXAMPLES 
+EXAMPLE_DIR=example
+EXAMPLE_FILE=$(EXAMPLE_DIR)/example.c
+EXAMPLE_BIN=$(EXAMPLE_DIR)/example
 
-build: $(TARGET).c $(TARGET).h
-	mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) -c -o $(BIN_DIR)/$(TARGET).o $<
+# TESTING 
+TEST_DIR=tests
+TEST_FILES:=$(wildcard $(TEST_DIR)/*.c)
 
-$(TARGET): build $(TARGET).c $(BIN_DIR)/$(TARGET).o
-	$(CC) $(CFLAGS) -o $(TARGET) $(TARGET).c
+all: $(BIN_DIR)/$(SRC).o $(EXAMPLE_BIN)
 
-example: build $(EXAMPLE).c
-	$(CC) $(CFLAGS) -o $(EXAMPLE) $(EXAMPLE).c $(BIN_DIR)/$(TARGET).o
-	./$(EXAMPLE)
+$(BIN_DIR): 
+	mkdir -p $@
+
+$(TEST_DIR): 
+	mkdir -p $@
+
+$(BIN_DIR)/$(SRC).o: $(SRC).c $(SRC).h | $(BIN_DIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(EXAMPLE_BIN): $(EXAMPLE_FILE) $(BIN_DIR)/$(SRC).o
+	$(CC) $(CFLAGS) -o $@ $^
+	@echo "Built example binaries: $@"
+	./$@
 
 clean:
-	rm -f build/$(TARGET).o $(TARGET) $(TEST)
+	rm -f $(BIN_DIR)/*.o $(EXAMPLE_BIN)
 
-.PHONY: all build test clean
+.PHONY: all clean

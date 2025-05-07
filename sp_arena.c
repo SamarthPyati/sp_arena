@@ -11,16 +11,17 @@ const sp_arena_config SP_ARENA_DEFAULT_CONFIG = {
     .deallocator = SP_ARENA_DEFAULT_DEALLOCATOR
 };
 
-/* Helper functions for alignment */
-static inline size_t align_forward(size_t ptr, size_t align) {
-    assert((align & (align - 1)) == 0 && "Alignment must be a power of 2");
-    
-    size_t mask = align - 1;
-    return (ptr + mask) & ~mask;
-}
 
 static inline bool is_power_of_two(size_t n) {
     return (n != 0) && ((n & (n - 1))) == 0; 
+}
+
+/* Helper functions for alignment */
+static inline size_t align_forward(size_t ptr, size_t align) {
+    assert(is_power_of_two(align) && "Alignment must be a power of 2");
+    
+    size_t mask = align - 1;
+    return (ptr + mask) & ~mask;
 }
 
 static inline void *align_forward_ptr(void *ptr, size_t align) {
