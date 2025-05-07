@@ -149,5 +149,5 @@ To enable thread safety, define `SP_ARENA_THREAD_SAFE` before including the head
 
 This project is licensed under the MIT License - see the [LICENSE.md](./LICENSE) file for details
 
-## Acknowledgements
-    - Inspiration taken from Ryan Fluery`s Article: [untangling-lifetimes-the-arena-allocator](https://www.rfleury.com/p/untangling-lifetimes-the-arena-allocator).
+## acknowledgements
+- Inspiration taken from Ryan Fluery`s Article: [untangling-lifetimes-the-arena-allocator](https://www.rfleury.com/p/untangling-lifetimes-the-arena-allocator).
